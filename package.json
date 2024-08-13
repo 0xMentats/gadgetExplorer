@@ -14,8 +14,17 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "gadgetExplorer",
+          "title": "Gadget Explorer",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
     "views": {
-      "explorer": [
+      "gadgetExplorer": [
         {
           "id": "gadget-files-tree",
           "name": "Gadget Files"
