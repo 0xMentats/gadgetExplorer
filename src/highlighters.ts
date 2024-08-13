@@ -34,18 +34,20 @@ export type HighlighterStoreEntry = {
 };
 
 export class HighlightService {
-	private extensionContext: vscode.ExtensionContext;
-
-	constructor(extensionContext: vscode.ExtensionContext) {
+	constructor(
+		private extensionContext: vscode.ExtensionContext
+	) {
 		this.extensionContext = extensionContext;
 	}
 
 	insertOrRemove(
+		// todo: we can probably avoid most of this by just passing the gadgetFileEntry to the constructor
 		filename: string,
 		snapshotId: number,
 		highlighter: HighlighterStoreEntry
 	): HighlighterStoreEntry[] {
-		console.log("Inserting highlighter: ", highlighter);
+		vscode.window.showInformationMessage(`Inserting highlighter for ${filename}`);
+
 		const gadgetFileEntry = this.extensionContext.workspaceState.get<GadgetFileStoreEntry>(filename);
 		let hlSnapshots = gadgetFileEntry?.hlSnapshots;
 		
@@ -68,25 +70,29 @@ export class HighlightService {
 		hlSnapshots![snapshotId] = highlighters;
 		this.extensionContext.workspaceState.update(filename, { hlSnapshotId: snapshotId, hlSnapshots });
 
-		// this.extensionContext.workspaceState.update(filename, highlighters);
 		return highlighters;
 	}
 
-	fetch(
+	fetchSnapshot(
 		filename: string,
 		snapshotId: number
 	): HighlighterStoreEntry[] {
+		vscode.window.showInformationMessage(`Fetching snapshot ${snapshotId} for ${filename}`);
 		const gadgetFileEntry = this.extensionContext.workspaceState.get<GadgetFileStoreEntry>(filename);
 		const snapshots = gadgetFileEntry?.hlSnapshots;
 		const highlighters = snapshots?.[snapshotId] || [];
 		return highlighters;
 	}
 
-	clear(
+	clearSnapshot(
 		filename: string,
 		snapshotId: number
 	) {
-		vscode.window.showInformationMessage(`Clearing highlighters for ${filename}`);
-		this.extensionContext.workspaceState.update(filename, []);
+		vscode.window.showInformationMessage(`Clearing snapshot ${snapshotId} for ${filename}`);
+		const gadgetFileEntry = this.extensionContext.workspaceState.get<GadgetFileStoreEntry>(filename);
+		let hlSnapshots = gadgetFileEntry?.hlSnapshots;
+		hlSnapshots![snapshotId] = [];
+		
+		this.extensionContext.workspaceState.update(filename, { hlSnapshotId: snapshotId, hlSnapshots });
 	}
 }

@@ -20,7 +20,7 @@ export class GadgetFile {
 	}
 
 	getHighlighters(): HighlighterStoreEntry[] {
-		this.highlighters = this.highlightService.fetch(this.filename, this.snapshotId);
+		this.highlighters = this.highlightService.fetchSnapshot(this.filename, this.snapshotId);
 		return this.highlighters;
 	}
 
@@ -30,7 +30,7 @@ export class GadgetFile {
 	}
 
 	clearHighlighters(): void {
-		this.highlightService.clear(this.filename, this.snapshotId);
+		this.highlightService.clearSnapshot(this.filename, this.snapshotId);
 	}
 
 	renderHighlighters(editor: vscode.TextEditor | undefined, highlighterDecorationTypes: typeof HighlighterDecorationTypes) {

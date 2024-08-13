@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { ColorKey, HighlighterStoreEntry } from './highlighters';
 import { TreeViewCommandKeys } from './config';
+import { GadgetFileStoreEntry } from './gadgetFile';
 
 export class GadgetFileProvider implements vscode.TreeDataProvider<GadgetFileItem | HighlighterItem | HighlighterItemColorSection> {
 	private _onDidChangeTreeData: vscode.EventEmitter<any> = new vscode.EventEmitter<any>();
@@ -49,7 +50,10 @@ export class GadgetFileProvider implements vscode.TreeDataProvider<GadgetFileIte
 	}
 
 	private getGadgetFileHighlightersColors(filename: string): HighlighterItemColorSection[] {
-		const highlighters = this.context.workspaceState.get<HighlighterStoreEntry[]>(filename, []);
+		const gadgetFile = this.context.workspaceState.get<GadgetFileStoreEntry>(filename);
+		const snapshotId = gadgetFile?.hlSnapshotId;
+		const highlighters = gadgetFile?.hlSnapshots[snapshotId!] || [];
+		
 		const colors = highlighters.map(h => h.color);
 		const uniqueColors = [...new Set(colors)];
 		const colorItems = uniqueColors.map(c => new HighlighterItemColorSection(
@@ -62,7 +66,10 @@ export class GadgetFileProvider implements vscode.TreeDataProvider<GadgetFileIte
 	}
 
 	private getGadgetFileHighlighters(filename: string): HighlighterItem[] {
-		const highlighters = this.context.workspaceState.get<HighlighterStoreEntry[]>(filename, []);
+		const gadgetFile = this.context.workspaceState.get<GadgetFileStoreEntry>(filename);
+		const snapshotId = gadgetFile?.hlSnapshotId;
+		const highlighters = gadgetFile?.hlSnapshots[snapshotId!] || [];
+
 		const highlightersItems = highlighters.map(h => new HighlighterItem(
 			vscode.TreeItemCollapsibleState.None,
 			vscode.Uri.file(filename),
