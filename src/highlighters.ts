@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { colors } from './config';
+import { GadgetFileStoreEntry } from './gadgetFile';
 
 export const HighlighterDecorationTypes: Record<ColorKey, vscode.TextEditorDecorationType> = {
 	red: vscode.window.createTextEditorDecorationType({
@@ -21,6 +22,10 @@ export const HighlighterDecorationTypes: Record<ColorKey, vscode.TextEditorDecor
 
 export type ColorKey = keyof typeof colors;
 
+export type HlSnapshot = {
+	[id: number]: HighlighterStoreEntry[];
+}
+
 export type HighlighterStoreEntry = {
 	start: number;
 	end: number;
@@ -35,11 +40,19 @@ export class HighlightService {
 		this.extensionContext = extensionContext;
 	}
 
-	insertOrRemove(filename: string, highlighter: HighlighterStoreEntry): HighlighterStoreEntry[] {
-		const highlighters = this.fetch(filename);
+	insertOrRemove(
+		filename: string,
+		snapshotId: number,
+		highlighter: HighlighterStoreEntry
+	): HighlighterStoreEntry[] {
+		console.log("Inserting highlighter: ", highlighter);
+		const gadgetFileEntry = this.extensionContext.workspaceState.get<GadgetFileStoreEntry>(filename);
+		let hlSnapshots = gadgetFileEntry?.hlSnapshots;
+		
+		let highlighters = hlSnapshots?.[snapshotId] || [];
 		const existingHighlighter = highlighters.find(h => h.start === highlighter.start && h.end === highlighter.end);
 
-		if(!existingHighlighter) {
+		if (!existingHighlighter) {
 			highlighters.push(highlighter);
 		} else if (existingHighlighter.color === highlighter.color) {
 			// remove the existing highlighter without adding the new one
@@ -51,16 +64,28 @@ export class HighlightService {
 			highlighters.splice(index, 1);
 			highlighters.push(highlighter);
 		}
-	
-		this.extensionContext.workspaceState.update(filename, highlighters);
+
+		hlSnapshots![snapshotId] = highlighters;
+		this.extensionContext.workspaceState.update(filename, { hlSnapshotId: snapshotId, hlSnapshots });
+
+		// this.extensionContext.workspaceState.update(filename, highlighters);
 		return highlighters;
 	}
 
-	fetch(filename: string): HighlighterStoreEntry[] {
-		return this.extensionContext.workspaceState.get<HighlighterStoreEntry[]>(filename) || [];
+	fetch(
+		filename: string,
+		snapshotId: number
+	): HighlighterStoreEntry[] {
+		const gadgetFileEntry = this.extensionContext.workspaceState.get<GadgetFileStoreEntry>(filename);
+		const snapshots = gadgetFileEntry?.hlSnapshots;
+		const highlighters = snapshots?.[snapshotId] || [];
+		return highlighters;
 	}
 
-	clear(filename: string) {
+	clear(
+		filename: string,
+		snapshotId: number
+	) {
 		vscode.window.showInformationMessage(`Clearing highlighters for ${filename}`);
 		this.extensionContext.workspaceState.update(filename, []);
 	}

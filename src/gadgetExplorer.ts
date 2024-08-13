@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { GadgetFile } from './gadgetFile';
+import { GadgetFile, GadgetFileStoreEntry } from './gadgetFile';
 import { HighlighterStoreEntry, HighlighterDecorationTypes, ColorKey, HighlightService } from './highlighters';
 import { GadgetFileProvider } from './treeView';
 import { colors, ContextStoreKeys, highlightCommandKeys } from './config';
@@ -13,7 +13,6 @@ export class GadgetExplorer {
 	private treeViewProvider?: GadgetFileProvider;
 
 	constructor(context: vscode.ExtensionContext) {
-		console.log("recompile2");
 		this.context = context;
 		this.currentEditor = vscode.window.activeTextEditor;
 		this.workspaceRootPath = vscode.workspace.workspaceFolders![0].uri.fsPath;
@@ -99,9 +98,30 @@ export class GadgetExplorer {
 			return false;
 		}
 
-		this.currentFile = new GadgetFile(filename as string, new HighlightService(this.context!));
+		this.ensureStoreGadgetFile(filename);
 		vscode.commands.executeCommand('setContext', ContextStoreKeys.gadgetFileFlag, true);
 		return true;
+	}
+
+	private ensureStoreGadgetFile(filename: string) {
+		let storeEntry = this.context.workspaceState.get<GadgetFileStoreEntry>(filename!);
+		
+		if(storeEntry) {
+			console.log('Store entry for gadget file already exists: ', storeEntry);
+		} else {
+			this.context.workspaceState.update(filename, {
+				hlSnapshotId: 0,
+				hlSnapshots: []
+			});	
+		}
+
+		this.currentFile = new GadgetFile(
+			filename as string,
+			0,
+			new HighlightService(this.context)
+		);
+
+		console.log('Created new store entry for gadget file: ', filename);
 	}
 
 	private renderCurrentFileHighlighters() {

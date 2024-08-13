@@ -1,34 +1,36 @@
 import * as vscode from "vscode";
-import { HighlighterStoreEntry, HighlighterDecorationTypes, HighlightService } from "./highlighters";
+import { HighlighterStoreEntry, HighlighterDecorationTypes, HighlightService, HlSnapshot } from "./highlighters";
+
+export type GadgetFileStoreEntry = {
+	hlSnapshotId: number;
+	hlSnapshots: HighlighterStoreEntry[][];
+}
 
 export class GadgetFile {
-	private filename: string;
-	private highlightService: HighlightService;
-	private highlighters: HighlighterStoreEntry[] = [];
+	public highlighters: HighlighterStoreEntry[] = [];
 
-	constructor(filename: string, highlightService: HighlightService) {
+	constructor(
+		public filename: string,
+		public snapshotId: number,
+		public highlightService: HighlightService
+	) {
 		this.filename = filename;
 		this.highlightService = highlightService;
 		this.highlighters = this.getHighlighters();
 	}
 
 	getHighlighters(): HighlighterStoreEntry[] {
-		this.highlighters = this.highlightService.fetch(this.filename);
+		this.highlighters = this.highlightService.fetch(this.filename, this.snapshotId);
 		return this.highlighters;
 	}
 
 	setHighlighter(highlighter: HighlighterStoreEntry): HighlighterStoreEntry[] {
-		this.highlighters = this.highlightService.insertOrRemove(this.filename, highlighter);
+		this.highlighters = this.highlightService.insertOrRemove(this.filename, this.snapshotId, highlighter);
 		return this.highlighters;
 	}
 
 	clearHighlighters(): void {
-		console.log('Clearing highlighters for file: ', this.filename);
-		console.log("Old highlighters: ", this.highlighters);
-		this.highlightService.clear(this.filename);
-		const newHighlighters = this.getHighlighters();
-		console.log("New highlighters: ", newHighlighters);
-
+		this.highlightService.clear(this.filename, this.snapshotId);
 	}
 
 	renderHighlighters(editor: vscode.TextEditor | undefined, highlighterDecorationTypes: typeof HighlighterDecorationTypes) {
