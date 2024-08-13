@@ -35,6 +35,6 @@ export class GadgetFile {
 	}
 
     static validateFilename(filename: string | undefined): boolean {
-        return filename !== undefined && filename.endsWith('.gadgets.txt');
+        return !!(filename?.endsWith('.gadgets.txt'))
     }
 }

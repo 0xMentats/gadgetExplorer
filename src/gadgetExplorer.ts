@@ -10,6 +10,7 @@ export class GadgetExplorer {
 	private currentEditor?: vscode.TextEditor;
 	private workspaceRootPath?: string;
 	private decorationTypes: vscode.TextEditorDecorationType[] = [];
+	private treeViewProvider?: GadgetFileProvider;
 
 	constructor(context: vscode.ExtensionContext) {
 		this.context = context;
@@ -18,7 +19,7 @@ export class GadgetExplorer {
 
 		this.registerCommands();
 		this.registerEvents();
-		this.registerDecorationTypes();
+		// this.registerDecorationTypes();
 		this.registerViewProviders();
 		this.registerViewElements();
 
@@ -69,7 +70,8 @@ export class GadgetExplorer {
 	}
 
 	private registerViewProviders() {
-		vscode.window.registerTreeDataProvider('gadget-files-tree', new GadgetFileProvider(this.workspaceRootPath!, this.context));
+		this.treeViewProvider = new GadgetFileProvider(this.workspaceRootPath!, this.context);
+		vscode.window.registerTreeDataProvider('gadget-files-tree', this.treeViewProvider);
 	}
 
 	private registerViewElements() {
@@ -87,9 +89,9 @@ export class GadgetExplorer {
 	}
 
 	private loadGadgetFile(filename: string | undefined) {
-		if (GadgetFile.validateFilename(filename)) {
+		if (!filename?.endsWith('.gadgets.txt')) {
 			console.error('Current file is not a gadget file. Skipping handle.');
-			vscode.commands.executeCommand('setContext', ContextStoreKeys.gadgetFileFlag, true);
+			vscode.commands.executeCommand('setContext', ContextStoreKeys.gadgetFileFlag, false);
 			return;
 		}
 
@@ -103,6 +105,7 @@ export class GadgetExplorer {
 
 	private setCurrentFileHighlighter(highlighter: HighlighterStoreEntry) {
 		this.currentFile?.setHighlighter(highlighter);
+		this.treeViewProvider?.refresh();
 		this.renderCurrentFileHighlighters();
 	}
 
