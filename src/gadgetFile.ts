@@ -18,18 +18,24 @@ export class GadgetFile {
 	}
 
 	setHighlighter(highlighter: HighlighterStoreEntry): HighlighterStoreEntry[] {
-		this.highlighters = this.highlightService.upsert(this.filename, highlighter);
+		this.highlighters = this.highlightService.insertOrRemove(this.filename, highlighter);
 		return this.highlighters;
 	}
 
-	clearHighlighters(editor: vscode.TextEditor | undefined, highlighterDecorationTypes: typeof HighlighterDecorationTypes): void {
+	clearHighlighters(): void {
+		console.log('Clearing highlighters for file: ', this.filename);
+		console.log("Old highlighters: ", this.highlighters);
 		this.highlightService.clear(this.filename);
+		const newHighlighters = this.getHighlighters();
+		console.log("New highlighters: ", newHighlighters);
+
 	}
 
 	renderHighlighters(editor: vscode.TextEditor | undefined, highlighterDecorationTypes: typeof HighlighterDecorationTypes) {
+		console.log('Rendering highlighters for file: ', this.filename);
 		for (const [key, decoration] of Object.entries(highlighterDecorationTypes)) {
 			editor?.setDecorations(decoration, []);
-			const colorHighlightersRanges = this.highlighters.filter(h => h.c === key).map(h => new vscode.Range(h.s, 0, h.e, Number.MAX_VALUE));
+			const colorHighlightersRanges = this.highlighters.filter(h => h.color === key).map(h => new vscode.Range(h.start, 0, h.end, Number.MAX_VALUE));
 			editor?.setDecorations(decoration, colorHighlightersRanges);
 		}
 	}

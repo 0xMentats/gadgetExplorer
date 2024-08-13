@@ -21,3 +21,8 @@ export const colors: Record<string, string> = {
 export const ContextStoreKeys: Record<string, string> = {
 	gadgetFileFlag: 'gadgetExplorer.gadgetFileFlag'
 } as const;
+
+export const TreeViewCommandKeys = {
+	onItemClicked: 'gadgetExplorer.treeview.on_item_clicked',
+	refresh: 'gadgetExplorer.treeview.refresh'
+} as const;

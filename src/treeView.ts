@@ -1,11 +1,18 @@
 import * as vscode from 'vscode';
 import { ColorKey, HighlighterStoreEntry } from './highlighters';
+import { TreeViewCommandKeys } from './config';
 
 export class GadgetFileProvider implements vscode.TreeDataProvider<GadgetFileItem | HighlighterItem | HighlighterItemColorSection> {
+	private _onDidChangeTreeData: vscode.EventEmitter<any> = new vscode.EventEmitter<any>();
+	readonly onDidChangeTreeData: vscode.Event<any> = this._onDidChangeTreeData.event;
+
 	constructor(
 		private workspaceRoot: string,
 		private context: vscode.ExtensionContext
-	) { }
+	) {
+		vscode.commands.registerCommand(TreeViewCommandKeys.onItemClicked, item => this.on_item_clicked(item));
+		vscode.commands.registerCommand(TreeViewCommandKeys.refresh, () => this.refresh());
+	}
 
 	getTreeItem(element: GadgetFileItem | HighlighterItem): vscode.TreeItem {
 		return element;
@@ -28,7 +35,7 @@ export class GadgetFileProvider implements vscode.TreeDataProvider<GadgetFileIte
 
 	private async getWorkspaceGadgetFiles(): Promise<GadgetFileItem[]> {
 		const gadgetFiles = await vscode.workspace.findFiles('**/*.gadgets.txt', '**/node_modules/**', 10);
-		return gadgetFiles.map(file => {
+		const gadgetFilenames = gadgetFiles.map(file => {
 			const relativePath = vscode.workspace.asRelativePath(file);
 			return new GadgetFileItem(
 				relativePath,
@@ -36,11 +43,14 @@ export class GadgetFileProvider implements vscode.TreeDataProvider<GadgetFileIte
 				vscode.Uri.file(file.fsPath)
 			);
 		});
+
+		const sortedGadgetFilenames = gadgetFilenames.sort((a, b) => a.filename.localeCompare(b.filename));
+		return sortedGadgetFilenames;
 	}
 
 	private getGadgetFileHighlightersColors(filename: string): HighlighterItemColorSection[] {
 		const highlighters = this.context.workspaceState.get<HighlighterStoreEntry[]>(filename, []);
-		const colors = highlighters.map(h => h.c);
+		const colors = highlighters.map(h => h.color);
 		const uniqueColors = [...new Set(colors)];
 		const colorItems = uniqueColors.map(c => new HighlighterItemColorSection(
 			c,
@@ -54,20 +64,52 @@ export class GadgetFileProvider implements vscode.TreeDataProvider<GadgetFileIte
 	private getGadgetFileHighlighters(filename: string): HighlighterItem[] {
 		const highlighters = this.context.workspaceState.get<HighlighterStoreEntry[]>(filename, []);
 		const highlightersItems = highlighters.map(h => new HighlighterItem(
-			`${h.s}:${h.e} > MOV`,
 			vscode.TreeItemCollapsibleState.None,
 			vscode.Uri.file(filename),
-			h.c
+			h.start,
+			h.end,
+			h.color,
+			h.gadget
 		));
+
+		// sort the highlighters by start range
+		highlightersItems.sort((a, b) => a.rangeStart - b.rangeStart);
 		return highlightersItems;
 	}
 
-	private _onDidChangeTreeData: vscode.EventEmitter<GadgetFileItem | HighlighterItem | undefined | null | void> = new vscode.EventEmitter<GadgetFileItem | HighlighterItem | undefined | null | void>();
-	readonly onDidChangeTreeData: vscode.Event<GadgetFileItem | HighlighterItem | undefined | null | void> = this._onDidChangeTreeData.event;
+	public on_item_clicked(item: GadgetFileItem | HighlighterItem | HighlighterItemColorSection) {
+		// make a switch statement to handle the different types of items
+		switch (item.constructor.name) {
+			case 'GadgetFileItem':
+				console.log('GadgetFileItem clicked: ', item);
+				vscode.workspace.openTextDocument(item.resourceUri!).then(doc => {
+					vscode.window.showTextDocument(doc);
+				});
+
+				break;
+			case 'HighlighterItem':
+				let highlighterItem = item as HighlighterItem;
+				console.log('HighlighterItem clicked: ', highlighterItem);
+				vscode.workspace.openTextDocument(highlighterItem.resourceUri!).then(doc => {
+					vscode.window.showTextDocument(doc).then(editor => {
+						const range = new vscode.Range(highlighterItem.rangeStart, 0, highlighterItem.rangeEnd, Number.MAX_VALUE);
+						editor?.revealRange(range);
+						editor.selection = new vscode.Selection(range.start, range.start);
+					});
+				});
+
+				break;
+			case 'HighlighterItemColorSection':
+				console.log('HighlighterItemColorSection clicked: ', item);
+				break;
+			default:
+				console.error('Unknown item type clicked: ', item);
+		}
+	}
 
 	refresh(): void {
 		console.log('Refreshing tree view');
-		this._onDidChangeTreeData.fire();
+		this._onDidChangeTreeData.fire(undefined);
 	}
 }
 
@@ -81,6 +123,11 @@ class GadgetFileItem extends vscode.TreeItem {
 		public readonly iconPath = vscode.ThemeIcon.File
 	) {
 		super(filename, collapsibleState);
+		this.command = {
+			command: TreeViewCommandKeys.onItemClicked,
+			title: 'Open',
+			arguments: [this]
+		};
 	}
 }
 
@@ -98,16 +145,35 @@ class HighlighterItemColorSection extends vscode.TreeItem {
 
 class HighlighterItem extends vscode.TreeItem {
 	constructor(
-		public readonly highlightedGadget: string,
+		// public readonly highlightedGadget: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-		public readonly reourceUri: vscode.Uri,
+		public readonly resourceUri: vscode.Uri,
+		public readonly rangeStart: number,
+		public readonly rangeEnd: number,
 		public readonly color: ColorKey,
+		public readonly gadget?: string,
 		public readonly command?: vscode.Command,
-		public readonly iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor(`terminal.ansi${color.charAt(0).toUpperCase() + color.slice(1)}`))
+		public readonly iconPath?: vscode.ThemeIcon
 	) {
 		super({
-			highlights: [[0,1]],
-			label: highlightedGadget
+			label: HighlighterItem.formatLabel(rangeStart, rangeEnd, gadget!),
+			highlights: [[0, 1]],
 		}, collapsibleState);
+
+		this.command = {
+			command: TreeViewCommandKeys.onItemClicked,
+			title: 'Open',
+			arguments: [this]
+		};
+
+		try {
+			this.iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor(`terminal.ansi${color.charAt(0).toUpperCase() + color.slice(1)}`))
+		} catch (error) {
+			console.error('Error creating icon path for tree view: ', error);
+		}
+	}
+
+	private static formatLabel(rangeStart: number, rangeEnd: number, gadget: string): string {
+		return `[${rangeStart}-${rangeEnd}] ${gadget.toUpperCase()}`;
 	}
 }

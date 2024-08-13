@@ -22,9 +22,10 @@ export const HighlighterDecorationTypes: Record<ColorKey, vscode.TextEditorDecor
 export type ColorKey = keyof typeof colors;
 
 export type HighlighterStoreEntry = {
-	s: number;
-	e: number;
-	c: ColorKey;
+	start: number;
+	end: number;
+	color: ColorKey;
+	gadget: string;
 };
 
 export class HighlightService {
@@ -34,16 +35,23 @@ export class HighlightService {
 		this.extensionContext = extensionContext;
 	}
 
-	upsert(filename: string, highlighter: HighlighterStoreEntry): HighlighterStoreEntry[] {
+	insertOrRemove(filename: string, highlighter: HighlighterStoreEntry): HighlighterStoreEntry[] {
 		const highlighters = this.fetch(filename);
-		const index = highlighters.findIndex(h => h.s === highlighter.s && h.e === highlighter.e);
+		const existingHighlighter = highlighters.find(h => h.start === highlighter.start && h.end === highlighter.end);
 
-		if (index > -1) {
-			highlighters[index] = highlighter;
+		if(!existingHighlighter) {
+			highlighters.push(highlighter);
+		} else if (existingHighlighter.color === highlighter.color) {
+			// remove the existing highlighter without adding the new one
+			const index = highlighters.indexOf(existingHighlighter);
+			highlighters.splice(index, 1);
 		} else {
+			// remove the existing highlighter and add the new one
+			const index = highlighters.indexOf(existingHighlighter);
+			highlighters.splice(index, 1);
 			highlighters.push(highlighter);
 		}
-
+	
 		this.extensionContext.workspaceState.update(filename, highlighters);
 		return highlighters;
 	}

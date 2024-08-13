@@ -10,7 +10,6 @@
     "Other"
   ],
   "activationEvents": [
-    "onLanguage:gadgetsFile",
     "onStartupFinished"
   ],
   "main": "./out/extension.js",
