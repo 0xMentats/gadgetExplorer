@@ -40,7 +40,7 @@ export class GadgetFileProvider implements vscode.TreeDataProvider<GadgetFileIte
 
 		const gadgetFilenames = fsGadgetFiles.map(file => {
 			const snapshotId = this.context.workspaceState.get<GadgetFileStoreEntry>(file.fsPath)?.hlSnapshotId || 0;
-			const snapshotsCount = this.context.workspaceState.get<GadgetFileStoreEntry>(file.fsPath)?.hlSnapshots.length || 0;
+			const snapshotsCount = this.context.workspaceState.get<GadgetFileStoreEntry>(file.fsPath)?.hlSnapshots?.length || 0;
 
 			const relativePath = vscode.workspace.asRelativePath(file);
 			return new GadgetFileItem(

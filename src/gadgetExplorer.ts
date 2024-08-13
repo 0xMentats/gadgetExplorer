@@ -3,6 +3,7 @@ import { GadgetFile, GadgetFileStoreEntry } from './gadgetFile';
 import { HighlighterStoreEntry, HighlighterDecorationTypes, ColorKey, HighlightService } from './highlighters';
 import { GadgetFileProvider } from './treeView';
 import { colors, ContextStoreKeys, highlightCommandKeys } from './config';
+import { InstructionsHoverProvider } from './Hover';
 
 export class GadgetExplorer {
 	private readonly context: vscode.ExtensionContext;
@@ -22,12 +23,14 @@ export class GadgetExplorer {
 		// this.registerDecorationTypes();
 		this.registerViewProviders();
 		this.registerViewElements();
+		this.registerLanguageFeatures();
 
 		console.log('Gadget Explorer initialized');
 		const currentFilename = vscode.window.activeTextEditor?.document.fileName;
 
 		this.loadGadgetFile(currentFilename);
 		this.currentFile?.renderHighlighters(this.currentEditor, HighlighterDecorationTypes);
+		console.log('Current global storage uri: ', this.context.globalStorageUri);
 	}
 
 	private registerDecorationTypes() {
@@ -62,6 +65,17 @@ export class GadgetExplorer {
 		}
 	}
 
+	private registerLanguageFeatures() {
+		const instructionsHoverProvider = new InstructionsHoverProvider(this.context, "x86");
+		try {
+			this.context.subscriptions.push(
+				vscode.languages.registerHoverProvider('gadgetsFile', instructionsHoverProvider)
+			);
+		} catch {
+			vscode.window.showErrorMessage('Error loading x86 instructions docs');
+		}
+	}
+
 	private registerEvents() {
 		this.context?.subscriptions.push(
 			vscode.window.onDidChangeActiveTextEditor((editor) => {
@@ -84,7 +98,7 @@ export class GadgetExplorer {
 	private handleActiveTextEditorChange(editor: vscode.TextEditor | undefined) {
 		this.currentEditor = editor;
 		const filename = editor?.document.fileName;
-		if(this.loadGadgetFile(filename)){
+		if (this.loadGadgetFile(filename)) {
 			this.renderCurrentFileHighlighters();
 		}
 	}
@@ -105,14 +119,14 @@ export class GadgetExplorer {
 
 	private ensureStoreGadgetFile(filename: string) {
 		let storeEntry = this.context.workspaceState.get<GadgetFileStoreEntry>(filename!);
-		
-		if(storeEntry) {
+
+		if (storeEntry) {
 			console.log('Store entry for gadget file already exists: ', storeEntry);
 		} else {
 			this.context.workspaceState.update(filename, {
 				hlSnapshotId: 0,
 				hlSnapshots: []
-			});	
+			});
 		}
 
 		this.currentFile = new GadgetFile(

@@ -50,7 +50,7 @@ export class HighlightService {
 
 		const gadgetFileEntry = this.extensionContext.workspaceState.get<GadgetFileStoreEntry>(filename);
 		let hlSnapshots = gadgetFileEntry?.hlSnapshots;
-		
+
 		let highlighters = hlSnapshots?.[snapshotId] || [];
 		const existingHighlighter = highlighters.find(h => h.start === highlighter.start && h.end === highlighter.end);
 
@@ -91,8 +91,14 @@ export class HighlightService {
 		vscode.window.showInformationMessage(`Clearing snapshot ${snapshotId} for ${filename}`);
 		const gadgetFileEntry = this.extensionContext.workspaceState.get<GadgetFileStoreEntry>(filename);
 		let hlSnapshots = gadgetFileEntry?.hlSnapshots;
+
+		if (!hlSnapshots) {
+			vscode.window.showErrorMessage(`snapshot ${snapshotId} for ${filename} is corrupted.`);
+			this.extensionContext.workspaceState.update(filename, { hlSnapshotId: 0, hlSnapshots: [] });
+			return;
+		}
+
 		hlSnapshots![snapshotId] = [];
-		
 		this.extensionContext.workspaceState.update(filename, { hlSnapshotId: snapshotId, hlSnapshots });
 	}
 }
