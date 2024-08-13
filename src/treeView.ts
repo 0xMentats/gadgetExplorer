@@ -35,11 +35,18 @@ export class GadgetFileProvider implements vscode.TreeDataProvider<GadgetFileIte
 	}
 
 	private async getWorkspaceGadgetFiles(): Promise<GadgetFileItem[]> {
-		const gadgetFiles = await vscode.workspace.findFiles('**/*.gadgets.txt', '**/node_modules/**', 10);
-		const gadgetFilenames = gadgetFiles.map(file => {
+		// todo: refactor
+		let fsGadgetFiles = await vscode.workspace.findFiles('**/*.gadgets.txt', '**/node_modules/**', 10);
+
+		const gadgetFilenames = fsGadgetFiles.map(file => {
+			const snapshotId = this.context.workspaceState.get<GadgetFileStoreEntry>(file.fsPath)?.hlSnapshotId || 0;
+			const snapshotsCount = this.context.workspaceState.get<GadgetFileStoreEntry>(file.fsPath)?.hlSnapshots.length || 0;
+
 			const relativePath = vscode.workspace.asRelativePath(file);
 			return new GadgetFileItem(
 				relativePath,
+				snapshotId,
+				snapshotsCount,
 				vscode.TreeItemCollapsibleState.Collapsed,
 				vscode.Uri.file(file.fsPath)
 			);
@@ -123,18 +130,25 @@ export class GadgetFileProvider implements vscode.TreeDataProvider<GadgetFileIte
 class GadgetFileItem extends vscode.TreeItem {
 	constructor(
 		public readonly filename: string,
+		public readonly snapshotId: number,
+		public readonly snapshotCount: number,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
 		public readonly resourceUri: vscode.Uri,
+		public readonly iconPath = vscode.ThemeIcon.File,
 		public readonly fsPath = resourceUri.fsPath,
-		public readonly command?: vscode.Command,
-		public readonly iconPath = vscode.ThemeIcon.File
+		public readonly contextValue = 'gadgetFile'
 	) {
-		super(filename, collapsibleState);
+		const label = GadgetFileItem.formatLabel(filename, snapshotId!);
+		super(label, collapsibleState);
 		this.command = {
 			command: TreeViewCommandKeys.onItemClicked,
 			title: 'Open',
 			arguments: [this]
 		};
+	}
+
+	private static formatLabel(filename: string, snapshotId: number, snapshotCount?: number): string {
+		return snapshotCount ? `${filename} (${snapshotId}/${snapshotCount})` : `${filename} (${snapshotId})`;
 	}
 }
 
@@ -160,7 +174,8 @@ class HighlighterItem extends vscode.TreeItem {
 		public readonly color: ColorKey,
 		public readonly gadget?: string,
 		public readonly command?: vscode.Command,
-		public readonly iconPath?: vscode.ThemeIcon
+		public readonly iconPath?: vscode.ThemeIcon,
+		public readonly contextValue = 'highlighter'
 	) {
 		super({
 			label: HighlighterItem.formatLabel(rangeStart, rangeEnd, gadget!),

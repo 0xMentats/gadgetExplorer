@@ -44,6 +44,11 @@
     ],
     "commands": [
       {
+        "command": "gadgetExplorer.test",
+        "title": "Test Command",
+        "icon": "media/icon.svg"
+      },
+      {
         "command": "gadgetExplorer.highlight.red",
         "title": "Highlight Red"
       },
@@ -65,7 +70,25 @@
       }
     ],
     "menus": {
+      "view/title": [
+        {
+          "command": "gadgetExplorer.test",
+          "when": "view == gadget-files-tree",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "gadgetExplorer.highlight.red",
+          "when": "view == gadget-files-tree && viewItem == gadgetFile",
+          "group": "inline"
+        }
+      ],
       "commandPalette": [
+        {
+          "command": "gadgetExplorer.test",
+          "when": "gadgetExplorer.gadgetFileFlag"
+        },
         {
           "command": "gadgetExplorer.highlight.red",
           "title": "Highlight Row",
