@@ -73,6 +73,16 @@ export class HighlightService {
 		return highlighters;
 	}
 
+	createSnapshot(filename: string): number {
+		vscode.window.showInformationMessage(`Creating snapshot for ${filename}`);
+		const gadgetFileEntry = this.extensionContext.workspaceState.get<GadgetFileStoreEntry>(filename);
+		const hlSnapshotId = gadgetFileEntry?.hlSnapshotId || 0;
+		const hlSnapshots = gadgetFileEntry?.hlSnapshots || [];
+
+		this.extensionContext.workspaceState.update(filename, { hlSnapshotId: hlSnapshotId + 1, hlSnapshots: [...hlSnapshots, []] });
+		return hlSnapshotId + 1;
+	}
+
 	fetchSnapshot(
 		filename: string,
 		snapshotId: number

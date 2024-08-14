@@ -31,6 +31,10 @@ export class GadgetExplorer {
 		this.loadGadgetFile(currentFilename);
 		this.currentFile?.renderHighlighters(this.currentEditor, HighlighterDecorationTypes);
 		console.log('Current global storage uri: ', this.context.globalStorageUri);
+
+		vscode.window.showQuickPick(['one', 'two', 'three']).then(value => {
+			console.log('User selected: ', value);
+		});
 	}
 
 	private registerDecorationTypes() {

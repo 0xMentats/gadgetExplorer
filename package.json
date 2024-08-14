@@ -45,6 +45,11 @@
     ],
     "commands": [
       {
+        "command": "gadgetExplorer.createSnapshot",
+        "title": "Create Snapshot",
+        "icon": "$(triangle-right)"
+      },
+      {
         "command": "gadgetExplorer.test",
         "title": "Test Command",
         "icon": "media/icon.svg"
@@ -80,7 +85,7 @@
       ],
       "view/item/context": [
         {
-          "command": "gadgetExplorer.highlight.red",
+          "command": "gadgetExplorer.createSnapshot",
           "when": "view == gadget-files-tree && viewItem == gadgetFile",
           "group": "inline"
         }

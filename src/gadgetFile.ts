@@ -17,6 +17,13 @@ export class GadgetFile {
 		this.filename = filename;
 		this.highlightService = highlightService;
 		this.highlighters = this.getHighlighters();
+		this.registerCommands();
+	}
+
+	createSnapshot(): void {
+		this.snapshotId = this.highlightService.createSnapshot(this.filename);
+		this.highlighters = [];
+		this.renderHighlighters(vscode.window.activeTextEditor, HighlighterDecorationTypes);
 	}
 
 	getHighlighters(): HighlighterStoreEntry[] {
@@ -40,6 +47,17 @@ export class GadgetFile {
 			const colorHighlightersRanges = this.highlighters.filter(h => h.color === key).map(h => new vscode.Range(h.start, 0, h.end, Number.MAX_VALUE));
 			editor?.setDecorations(decoration, colorHighlightersRanges);
 		}
+	}
+
+	registerCommands() {
+		// todo: register commands for creating snapshots, clearing highlighters, etc.
+		vscode.commands.registerCommand('gadgetExplorer.createSnapshot', () => {
+			this.createSnapshot();
+		});
+
+		vscode.commands.registerCommand('gadgetExplorer.clearHighlighters', () => {
+			this.clearHighlighters();
+		});
 	}
 
     static validateFilename(filename: string | undefined): boolean {

@@ -36,7 +36,7 @@ export class InstructionsHoverProvider implements vscode.HoverProvider {
 
         if (!cachedInstruction) {
             vscode.window.showInformationMessage(`Caching instruction docs for ${this.languageVersion}`);
-            this.loadSingleInstructionDoc(hoverWord);
+            this.loadSingleInstructionDoc(hoverWord); // todo: this is async, so the hover will not show up immediately after the first time
         }
 
         const wordDefinition = this.instructionDocs.get(hoverWord.toLowerCase()) || this.instructionDocs.get(hoverWord.toUpperCase()); // todo always case insensitive?
