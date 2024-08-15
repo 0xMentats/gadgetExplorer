@@ -45,9 +45,14 @@
     ],
     "commands": [
       {
-        "command": "gadgetExplorer.createSnapshot",
+        "command": "gadgetExplorer.gadgetfile.createSnapshot",
         "title": "Create Snapshot",
         "icon": "$(triangle-right)"
+      },
+      {
+        "command": "gadgetExplorer.gadgetfile.loadSnapshot",
+        "title": "Load previous Snapshot",
+        "icon": "$(triangle-left)"
       },
       {
         "command": "gadgetExplorer.test",
@@ -85,7 +90,12 @@
       ],
       "view/item/context": [
         {
-          "command": "gadgetExplorer.createSnapshot",
+          "command": "gadgetExplorer.gadgetfile.loadSnapshot",
+          "when": "view == gadget-files-tree && viewItem == gadgetFile",
+          "group": "inline"
+        },
+        {
+          "command": "gadgetExplorer.gadgetfile.createSnapshot",
           "when": "view == gadget-files-tree && viewItem == gadgetFile",
           "group": "inline"
         }

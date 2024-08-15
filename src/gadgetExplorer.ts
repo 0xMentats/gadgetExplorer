@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import { GadgetFile, GadgetFileStoreEntry } from './gadgetFile';
 import { HighlighterStoreEntry, HighlighterDecorationTypes, ColorKey, HighlightService } from './highlighters';
-import { GadgetFileProvider } from './treeView';
-import { colors, ContextStoreKeys, highlightCommandKeys } from './config';
+import { GadgetFileItem, GadgetFileProvider } from './treeView';
+import { colors, ContextStoreKeys, GadgetFileCommandKeys, highlightCommandKeys, TreeViewCommandKeys } from './config';
 import { InstructionsHoverProvider } from './Hover';
 
 export class GadgetExplorer {
@@ -67,6 +67,43 @@ export class GadgetExplorer {
 				})
 			);
 		}
+
+		vscode.commands.registerCommand(GadgetFileCommandKeys.createSnapshot, (gadgetFileEntry: GadgetFileItem) => {
+			console.log('Creating snapshot');
+			let gadgetFile = this.context.workspaceState.get<GadgetFileStoreEntry>(gadgetFileEntry.resourceUri!.fsPath);
+			if (!gadgetFile) {
+				console.error('Gadget file not found in workspace state, skipping snapshot creation');
+				return;
+			}
+
+			const newSnapshotId = gadgetFile.hlSnapshots.length;
+
+			this.context.workspaceState.update(gadgetFileEntry.resourceUri!.fsPath, {
+				hlSnapshotId: newSnapshotId,
+				hlSnapshots: [...gadgetFile.hlSnapshots, []]
+			});
+
+			vscode.commands.executeCommand(TreeViewCommandKeys.refresh);
+			// check if the updated gadget file is opened in the editor
+			if (this.currentFile?.filename === gadgetFileEntry.resourceUri!.fsPath) {
+				this.currentFile.snapshotId = newSnapshotId;
+				this.currentFile.highlighters = [];
+				this.renderCurrentFileHighlighters();
+			}
+		});
+
+		vscode.commands.registerCommand(GadgetFileCommandKeys.loadSnapshot, (gadgetFileEntry: GadgetFileItem) => {
+			console.log('Loading snapshot');
+			let gadgetFile = this.context.workspaceState.get<GadgetFileStoreEntry>(gadgetFileEntry.resourceUri!.fsPath);
+			if (!gadgetFile) {
+				console.error('Gadget file not found in workspace state, skipping snapshot load');
+				return;
+			}
+		});
+
+		vscode.commands.registerCommand(GadgetFileCommandKeys.clearHighlighters, () => {
+			// this.clearHighlighters();
+		});
 	}
 
 	private registerLanguageFeatures() {
@@ -83,7 +120,9 @@ export class GadgetExplorer {
 	private registerEvents() {
 		this.context?.subscriptions.push(
 			vscode.window.onDidChangeActiveTextEditor((editor) => {
-				this.handleActiveTextEditorChange(editor);
+				if (editor) {
+					this.handleActiveTextEditorChange(editor);
+				}
 			})
 		);
 	}
@@ -116,7 +155,21 @@ export class GadgetExplorer {
 			return false;
 		}
 
-		this.ensureStoreGadgetFile(filename);
+		const existingGadgetFile = this.context.workspaceState.get<GadgetFileStoreEntry>(filename!);
+		const snapshotId = existingGadgetFile?.hlSnapshotId || 0;
+		const highlightService = new HighlightService(this.context);
+
+		try {
+			this.currentFile = new GadgetFile(
+				filename as string,
+				snapshotId,
+				highlightService
+			);
+		} catch (error) {
+			console.error('Error creating gadget file: ', error);
+			return false;
+		}
+
 		vscode.commands.executeCommand('setContext', ContextStoreKeys.gadgetFileFlag, true);
 		return true;
 	}
@@ -126,6 +179,14 @@ export class GadgetExplorer {
 
 		if (storeEntry) {
 			console.log('Store entry for gadget file already exists: ', storeEntry);
+			this.currentFile = new GadgetFile(
+				filename as string,
+				storeEntry.hlSnapshotId,
+				new HighlightService(this.context)
+			);
+
+			return;
+
 		} else {
 			this.context.workspaceState.update(filename, {
 				hlSnapshotId: 0,
@@ -153,8 +214,8 @@ export class GadgetExplorer {
 	private setCurrentFileHighlighter(highlighter: HighlighterStoreEntry) {
 		try {
 			this.currentFile?.setHighlighter(highlighter);
-			this.treeViewProvider?.refresh();
-			// this.renderCurrentFileHighlighters();
+			vscode.commands.executeCommand(TreeViewCommandKeys.refresh);
+
 		} catch (error) {
 			console.error('Error setting highlighter: ', error);
 		}

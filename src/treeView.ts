@@ -3,6 +3,79 @@ import { ColorKey, HighlighterStoreEntry } from './highlighters';
 import { TreeViewCommandKeys } from './config';
 import { GadgetFileStoreEntry } from './gadgetFile';
 
+export class GadgetFileItem extends vscode.TreeItem {
+	constructor(
+		public readonly filename: string,
+		public readonly snapshotId: number,
+		public readonly snapshotCount: number,
+		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+		public readonly resourceUri: vscode.Uri,
+		public readonly iconPath = vscode.ThemeIcon.File,
+		public readonly fsPath = resourceUri.fsPath,
+		public readonly contextValue = 'gadgetFile'
+	) {
+		const label = GadgetFileItem.formatLabel(filename, snapshotId!, snapshotCount);
+		super(label, collapsibleState);
+		this.command = {
+			command: TreeViewCommandKeys.onItemClicked,
+			title: 'Open',
+			arguments: [this]
+		};
+	}
+
+	private static formatLabel(filename: string, snapshotId: number, snapshotCount?: number): string {
+		return snapshotCount ? `${filename} (${snapshotId}/${snapshotCount})` : `${filename} (${snapshotId})`;
+	}
+}
+
+class HighlighterItemColorSection extends vscode.TreeItem {
+	constructor(
+		public readonly color: string,
+		public readonly fsPath: string,
+		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+		public readonly childCount: number,
+		public readonly command?: vscode.Command
+	) {
+		super(color, collapsibleState);
+	}
+}
+
+class HighlighterItem extends vscode.TreeItem {
+	constructor(
+		// public readonly highlightedGadget: string,
+		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+		public readonly resourceUri: vscode.Uri,
+		public readonly rangeStart: number,
+		public readonly rangeEnd: number,
+		public readonly color: ColorKey,
+		public readonly gadget?: string,
+		public readonly command?: vscode.Command,
+		public readonly iconPath?: vscode.ThemeIcon,
+		public readonly contextValue = 'highlighter'
+	) {
+		super({
+			label: HighlighterItem.formatLabel(rangeStart, rangeEnd, gadget!),
+			highlights: [[0, 1]],
+		}, collapsibleState);
+
+		this.command = {
+			command: TreeViewCommandKeys.onItemClicked,
+			title: 'Open',
+			arguments: [this]
+		};
+
+		try {
+			this.iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor(`terminal.ansi${color.charAt(0).toUpperCase() + color.slice(1)}`))
+		} catch (error) {
+			console.error('Error creating icon path for tree view: ', error);
+		}
+	}
+
+	private static formatLabel(rangeStart: number, rangeEnd: number, gadget: string): string {
+		return `[${rangeStart}-${rangeEnd}] ${gadget.toUpperCase()}`;
+	}
+}
+
 export class GadgetFileProvider implements vscode.TreeDataProvider<GadgetFileItem | HighlighterItem | HighlighterItemColorSection> {
 	private _onDidChangeTreeData: vscode.EventEmitter<any> = new vscode.EventEmitter<any>();
 	readonly onDidChangeTreeData: vscode.Event<any> = this._onDidChangeTreeData.event;
@@ -11,8 +84,7 @@ export class GadgetFileProvider implements vscode.TreeDataProvider<GadgetFileIte
 		private workspaceRoot: string,
 		private context: vscode.ExtensionContext
 	) {
-		vscode.commands.registerCommand(TreeViewCommandKeys.onItemClicked, item => this.on_item_clicked(item));
-		vscode.commands.registerCommand(TreeViewCommandKeys.refresh, () => this.refresh());
+		this.registerCommands();
 	}
 
 	getTreeItem(element: GadgetFileItem | HighlighterItem): vscode.TreeItem {
@@ -91,6 +163,17 @@ export class GadgetFileProvider implements vscode.TreeDataProvider<GadgetFileIte
 		return highlightersItems;
 	}
 
+	private registerCommands() {
+		vscode.commands.registerCommand(TreeViewCommandKeys.onItemClicked, item => {
+			console.log('Item clicked: ', item);
+			this.on_item_clicked(item);
+		});
+		vscode.commands.registerCommand(TreeViewCommandKeys.refresh, () => {
+			console.log('Refreshing tree view');
+			this.refresh();
+		});
+	}
+
 	public on_item_clicked(item: GadgetFileItem | HighlighterItem | HighlighterItemColorSection) {
 		// make a switch statement to handle the different types of items
 		switch (item.constructor.name) {
@@ -127,75 +210,3 @@ export class GadgetFileProvider implements vscode.TreeDataProvider<GadgetFileIte
 	}
 }
 
-class GadgetFileItem extends vscode.TreeItem {
-	constructor(
-		public readonly filename: string,
-		public readonly snapshotId: number,
-		public readonly snapshotCount: number,
-		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-		public readonly resourceUri: vscode.Uri,
-		public readonly iconPath = vscode.ThemeIcon.File,
-		public readonly fsPath = resourceUri.fsPath,
-		public readonly contextValue = 'gadgetFile'
-	) {
-		const label = GadgetFileItem.formatLabel(filename, snapshotId!);
-		super(label, collapsibleState);
-		this.command = {
-			command: TreeViewCommandKeys.onItemClicked,
-			title: 'Open',
-			arguments: [this]
-		};
-	}
-
-	private static formatLabel(filename: string, snapshotId: number, snapshotCount?: number): string {
-		return snapshotCount ? `${filename} (${snapshotId}/${snapshotCount})` : `${filename} (${snapshotId})`;
-	}
-}
-
-class HighlighterItemColorSection extends vscode.TreeItem {
-	constructor(
-		public readonly color: string,
-		public readonly fsPath: string,
-		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-		public readonly childCount: number,
-		public readonly command?: vscode.Command
-	) {
-		super(color, collapsibleState);
-	}
-}
-
-class HighlighterItem extends vscode.TreeItem {
-	constructor(
-		// public readonly highlightedGadget: string,
-		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-		public readonly resourceUri: vscode.Uri,
-		public readonly rangeStart: number,
-		public readonly rangeEnd: number,
-		public readonly color: ColorKey,
-		public readonly gadget?: string,
-		public readonly command?: vscode.Command,
-		public readonly iconPath?: vscode.ThemeIcon,
-		public readonly contextValue = 'highlighter'
-	) {
-		super({
-			label: HighlighterItem.formatLabel(rangeStart, rangeEnd, gadget!),
-			highlights: [[0, 1]],
-		}, collapsibleState);
-
-		this.command = {
-			command: TreeViewCommandKeys.onItemClicked,
-			title: 'Open',
-			arguments: [this]
-		};
-
-		try {
-			this.iconPath = new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor(`terminal.ansi${color.charAt(0).toUpperCase() + color.slice(1)}`))
-		} catch (error) {
-			console.error('Error creating icon path for tree view: ', error);
-		}
-	}
-
-	private static formatLabel(rangeStart: number, rangeEnd: number, gadget: string): string {
-		return `[${rangeStart}-${rangeEnd}] ${gadget.toUpperCase()}`;
-	}
-}
