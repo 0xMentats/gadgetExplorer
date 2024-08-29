@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
 import { GadgetFile, GadgetFileStoreEntry } from './gadgetFile';
 import { HighlighterStoreEntry, HighlighterDecorationTypes, ColorKey, HighlightService } from './highlighters';
 import { GadgetFileItem, GadgetFileProvider } from './treeView';
@@ -32,9 +33,7 @@ export class GadgetExplorer {
 		this.currentFile?.renderHighlighters(this.currentEditor, HighlighterDecorationTypes);
 		console.log('Current global storage uri: ', this.context.globalStorageUri);
 
-		vscode.window.showQuickPick(['one', 'two', 'three']).then(value => {
-			console.log('User selected: ', value);
-		});
+		// list all directories in extensionPath
 	}
 
 	private registerDecorationTypes() {
@@ -44,6 +43,90 @@ export class GadgetExplorer {
 
 		this.context?.subscriptions.push(decorationType);
 		this.decorationTypes.push(decorationType);
+	}
+
+	private validateSnapshotId(snapshotId: number, filename: string): boolean {
+		const gadgetFile = this.context.workspaceState.get<GadgetFileStoreEntry>(filename);
+
+		if (snapshotId < 0 || snapshotId >= gadgetFile!.hlSnapshots.length) {
+			console.error('Invalid snapshot id. restoring 0 :', snapshotId);
+			this.context.workspaceState.update(filename, {
+				hlSnapshotId: 0,
+				hlSnapshots: gadgetFile!.hlSnapshots
+			});
+			return false;
+		}
+
+		return true;
+	}
+
+	private loadSnapshot(
+		direction: 'prev' | 'next',
+		gadgetFileEntry: GadgetFileItem
+	) {
+
+		let gadgetFile = this.context.workspaceState.get<GadgetFileStoreEntry>(gadgetFileEntry.resourceUri!.fsPath);
+		let currSnapshotId = gadgetFileEntry?.snapshotId;
+
+
+		if (!gadgetFile) {
+			console.error('Gadget file not found in workspace state, skipping snapshot load');
+			return;
+		}
+
+		if (!this.validateSnapshotId(currSnapshotId, gadgetFileEntry.resourceUri!.fsPath)) {
+			currSnapshotId = 0;
+
+			// updating the selected snapshot id in the workspace state
+			this.context.workspaceState.update(gadgetFileEntry.resourceUri!.fsPath, {
+				hlSnapshotId: 0,
+				hlSnapshots: gadgetFile.hlSnapshots
+			});
+
+			if (this.currentFile?.filename === gadgetFileEntry.resourceUri!.fsPath) {
+				this.currentFile.snapshotId = 0;
+				this.currentFile.highlighters = gadgetFile.hlSnapshots[0];
+				this.renderCurrentFileHighlighters();
+			}
+
+			vscode.commands.executeCommand(TreeViewCommandKeys.refresh);
+
+			return;
+		}
+
+		let newSnapshotId;
+
+		switch (direction) {
+			case 'prev':
+				if (currSnapshotId === 0) {
+					console.error('Already at the first snapshot');
+					return;
+				}
+				newSnapshotId = currSnapshotId - 1;
+				break;
+			case 'next':
+				if (currSnapshotId === gadgetFile.hlSnapshots.length - 1) {
+					console.error('Already at the last snapshot');
+					return;
+				}
+				newSnapshotId = currSnapshotId + 1;
+				break;
+		}
+
+		// updating the selected snapshot id in the workspace state
+		this.context.workspaceState.update(gadgetFileEntry.resourceUri!.fsPath, {
+			hlSnapshotId: newSnapshotId,
+			hlSnapshots: gadgetFile.hlSnapshots
+		});
+
+		// updating the snapshot id in the current file
+		if (this.currentFile?.filename === gadgetFileEntry.resourceUri!.fsPath) {
+			this.currentFile.snapshotId = newSnapshotId;
+			this.currentFile.highlighters = gadgetFile.hlSnapshots[newSnapshotId];
+			this.renderCurrentFileHighlighters();
+		}
+
+		vscode.commands.executeCommand(TreeViewCommandKeys.refresh);
 	}
 
 	private registerCommands() {
@@ -92,13 +175,17 @@ export class GadgetExplorer {
 			}
 		});
 
-		vscode.commands.registerCommand(GadgetFileCommandKeys.loadSnapshot, (gadgetFileEntry: GadgetFileItem) => {
-			console.log('Loading snapshot');
-			let gadgetFile = this.context.workspaceState.get<GadgetFileStoreEntry>(gadgetFileEntry.resourceUri!.fsPath);
-			if (!gadgetFile) {
-				console.error('Gadget file not found in workspace state, skipping snapshot load');
-				return;
-			}
+		vscode.commands.registerCommand(GadgetFileCommandKeys.loadSnapshotPrev, (gadgetFileEntry: GadgetFileItem) => {
+			console.log('Loading prev snapshot');
+			this.loadSnapshot('prev', gadgetFileEntry);
+		});
+
+		// todo: this looks really bad.
+		// loadSnapshot should be a method of GadgetFile
+		// and i can probably avoid 2 handlers for prev and next
+		vscode.commands.registerCommand(GadgetFileCommandKeys.loadSnapshotNext, (gadgetFileEntry: GadgetFileItem) => {
+			console.log('Loading next snapshot');
+			this.loadSnapshot('next', gadgetFileEntry);
 		});
 
 		vscode.commands.registerCommand(GadgetFileCommandKeys.clearHighlighters, () => {

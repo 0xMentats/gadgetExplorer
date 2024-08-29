@@ -46,9 +46,12 @@ export class HighlightService {
 		snapshotId: number,
 		highlighter: HighlighterStoreEntry
 	): HighlighterStoreEntry[] {
-		vscode.window.showInformationMessage(`Inserting highlighter for ${filename}`);
+		let gadgetFileEntry = this.extensionContext.workspaceState.get<GadgetFileStoreEntry>(filename);
+		if (!gadgetFileEntry) {
+			gadgetFileEntry = { hlSnapshotId: 0, hlSnapshots: [] };
+			this.extensionContext.workspaceState.update(filename, gadgetFileEntry);
+		}
 
-		const gadgetFileEntry = this.extensionContext.workspaceState.get<GadgetFileStoreEntry>(filename);
 		let hlSnapshots = gadgetFileEntry?.hlSnapshots;
 
 		let highlighters = hlSnapshots?.[snapshotId] || [];
@@ -78,7 +81,6 @@ export class HighlightService {
 		const hlSnapshotId = gadgetFileEntry?.hlSnapshotId || 0;
 		const hlSnapshots = gadgetFileEntry?.hlSnapshots || [];
 		
-		vscode.window.showInformationMessage(`Creating new snapshot ${hlSnapshotId + 1} for ${filename}`);
 		this.extensionContext.workspaceState.update(filename, { hlSnapshotId: hlSnapshotId + 1, hlSnapshots: [...hlSnapshots, []] });
 		return hlSnapshotId + 1;
 	}
@@ -87,7 +89,6 @@ export class HighlightService {
 		filename: string,
 		snapshotId: number
 	): HighlighterStoreEntry[] {
-		vscode.window.showInformationMessage(`Fetching snapshot ${snapshotId} for ${filename}`);
 		const gadgetFileEntry = this.extensionContext.workspaceState.get<GadgetFileStoreEntry>(filename);
 		const snapshots = gadgetFileEntry?.hlSnapshots;
 		const highlighters = snapshots?.[snapshotId] || [];

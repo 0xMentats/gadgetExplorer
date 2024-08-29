@@ -29,6 +29,7 @@ export const TreeViewCommandKeys = {
 
 export const GadgetFileCommandKeys = {
 	createSnapshot: 'gadgetExplorer.gadgetfile.createSnapshot',
-	loadSnapshot: 'gadgetExplorer.gadgetfile.loadSnapshot',
+	loadSnapshotPrev: 'gadgetExplorer.gadgetfile.loadSnapshotPrev',
+	loadSnapshotNext: 'gadgetExplorer.gadgetfile.loadSnapshotNext',
 	clearHighlighters: 'gadgetExplorer.gadgetfile.clearHighlighters'
 } as const;

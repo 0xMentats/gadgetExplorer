@@ -24,7 +24,7 @@ export class GadgetFileItem extends vscode.TreeItem {
 	}
 
 	private static formatLabel(filename: string, snapshotId: number, snapshotCount?: number): string {
-		return snapshotCount ? `${filename} (${snapshotId}/${snapshotCount})` : `${filename} (${snapshotId})`;
+		return snapshotCount ? `${filename} (${snapshotId}/${snapshotCount - 1})` : `${filename} (${snapshotId})`;
 	}
 }
 
@@ -72,7 +72,8 @@ class HighlighterItem extends vscode.TreeItem {
 	}
 
 	private static formatLabel(rangeStart: number, rangeEnd: number, gadget: string): string {
-		return `[${rangeStart}-${rangeEnd}] ${gadget.toUpperCase()}`;
+		const rangeStr = rangeStart !== rangeEnd ? `${rangeStart}-${rangeEnd}` : `${rangeStart}`;
+		return `[${rangeStr}] ${gadget.toUpperCase()}`;
 	}
 }
 
