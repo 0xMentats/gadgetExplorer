@@ -8,3 +8,5 @@ Thumbs.db
 tsconfig.lsif.json
 *.lsif
 *.db
+*.vsix
+*.gadgets.txt

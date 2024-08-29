@@ -45,9 +45,19 @@
     ],
     "commands": [
       {
-        "command": "gadgetExplorer.createSnapshot",
-        "title": "Create Snapshot",
+        "command": "gadgetExplorer.gadgetfile.loadSnapshotPrev",
+        "title": "Load previous Snapshot",
+        "icon": "$(triangle-left)"
+      },
+      {
+        "command": "gadgetExplorer.gadgetfile.loadSnapshotNext",
+        "title": "Load next Snapshot",
         "icon": "$(triangle-right)"
+      },
+      {
+        "command": "gadgetExplorer.gadgetfile.createSnapshot",
+        "title": "Create Snapshot",
+        "icon": "$(plus)"
       },
       {
         "command": "gadgetExplorer.test",
@@ -85,9 +95,19 @@
       ],
       "view/item/context": [
         {
-          "command": "gadgetExplorer.createSnapshot",
+          "command": "gadgetExplorer.gadgetfile.loadSnapshotPrev",
           "when": "view == gadget-files-tree && viewItem == gadgetFile",
-          "group": "inline"
+          "group": "inline@0"
+        },
+        {
+          "command": "gadgetExplorer.gadgetfile.loadSnapshotNext",
+          "when": "view == gadget-files-tree && viewItem == gadgetFile",
+          "group": "inline@1"
+        },
+        {
+          "command": "gadgetExplorer.gadgetfile.createSnapshot",
+          "when": "view == gadget-files-tree && viewItem == gadgetFile",
+          "group": "inline@2"
         }
       ],
       "commandPalette": [

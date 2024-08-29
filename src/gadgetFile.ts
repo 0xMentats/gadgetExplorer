@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { HighlighterStoreEntry, HighlighterDecorationTypes, HighlightService, HlSnapshot } from "./highlighters";
+import { GadgetFileCommandKeys } from "./config";
 
 export type GadgetFileStoreEntry = {
 	hlSnapshotId: number;
@@ -17,13 +18,12 @@ export class GadgetFile {
 		this.filename = filename;
 		this.highlightService = highlightService;
 		this.highlighters = this.getHighlighters();
-		this.registerCommands();
+		// this.registerCommands();
 	}
 
 	createSnapshot(): void {
 		this.snapshotId = this.highlightService.createSnapshot(this.filename);
 		this.highlighters = [];
-		this.renderHighlighters(vscode.window.activeTextEditor, HighlighterDecorationTypes);
 	}
 
 	getHighlighters(): HighlighterStoreEntry[] {
@@ -50,14 +50,21 @@ export class GadgetFile {
 	}
 
 	registerCommands() {
-		// todo: register commands for creating snapshots, clearing highlighters, etc.
-		vscode.commands.registerCommand('gadgetExplorer.createSnapshot', () => {
-			this.createSnapshot();
+
+		// check if commands are already registered
+
+		vscode.commands.getCommands(true).then((commands) => {
+			console.log('Commands: ', commands);
+			// check if any of the commands are already registered
+			for (const command of Object.values(GadgetFileCommandKeys)) {
+				if (commands.includes(command)) {
+					console.log(`Command already registered: ${command}`);
+					return;
+				}
+			}
 		});
 
-		vscode.commands.registerCommand('gadgetExplorer.clearHighlighters', () => {
-			this.clearHighlighters();
-		});
+		// todo: register commands for creating snapshots, clearing highlighters, etc.
 	}
 
     static validateFilename(filename: string | undefined): boolean {

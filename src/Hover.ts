@@ -1,25 +1,41 @@
 import * as vscode from "vscode";
+import * as fs from "fs";
+
 
 export class InstructionsHoverProvider implements vscode.HoverProvider {
     private instructionDocs: Map<string, vscode.MarkdownString | "unknown"> = new Map();
+    private availableInstructions: Map<string, string> = new Map();
     private memoryUsage: number = 0;
     private instructionsDocsLocation: vscode.Uri;
 
     constructor(
         private context: vscode.ExtensionContext,
-        private languageVersion: string = "x86" // todo: make this configurable
+        private languageVersion: string = "x86", // todo: make this configurable
     ) {
         vscode.window.showInformationMessage(`Initializing InstructionsHoverProvider for asm ${languageVersion}`);
-        this.instructionsDocsLocation = vscode.Uri.file(this.context.globalStorageUri.fsPath + `/docs/${this.languageVersion}/instructions/`);
+        const extensionPath = this.context.extensionPath;
+        this.instructionsDocsLocation = vscode.Uri.joinPath(vscode.Uri.file(extensionPath), `docs/${languageVersion}/instructions/`);
+        this.loadAvailableInstructions();
+        console.log("wat");
+        console.log(this.availableInstructions);
     }
 
+    loadAvailableInstructions() {
+        fs.readdirSync(this.instructionsDocsLocation.fsPath).forEach(file => {
+            const instruction = file.split(".")[0];
+            const multipleInstructions = instruction.split("_");
+            multipleInstructions.forEach(i => {
+                this.availableInstructions.set(i, file);
+            });
+        });
+    }
+    
     provideHover(
         document: vscode.TextDocument,
         position: vscode.Position,
         token: vscode.CancellationToken,
         language?: string
     ): vscode.ProviderResult<vscode.Hover> {
-
         const range = document.getWordRangeAtPosition(position);
         const hoverWord = document.getText(range);
 
@@ -35,8 +51,7 @@ export class InstructionsHoverProvider implements vscode.HoverProvider {
         }
 
         if (!cachedInstruction) {
-            vscode.window.showInformationMessage(`Caching instruction docs for ${this.languageVersion}`);
-            this.loadSingleInstructionDoc(hoverWord); // todo: this is async, so the hover will not show up immediately after the first time
+            this.loadSingleInstructionDoc(hoverWord);
         }
 
         const wordDefinition = this.instructionDocs.get(hoverWord.toLowerCase()) || this.instructionDocs.get(hoverWord.toUpperCase()); // todo always case insensitive?
@@ -45,26 +60,26 @@ export class InstructionsHoverProvider implements vscode.HoverProvider {
         }
     }
 
-    public async loadSingleInstructionDoc(instruction: string) {
-        const fileUri = vscode.Uri.joinPath(this.instructionsDocsLocation, `${instruction}.md`);
+    public loadSingleInstructionDoc(instruction: string) {
+        const fileUri = this.availableInstructions.get(instruction.toUpperCase());
         
-        let docContent;
-
-        try {
-            docContent = await vscode.workspace.fs.readFile(fileUri);
-        } catch (error) {
-            vscode.window.showErrorMessage(`Could not find documentation for ${instruction} instruction`);
+        if (!fileUri) {
             this.instructionDocs.set(instruction, "unknown");
             return;
         }
 
+        if (this.instructionDocs.has(instruction)) {
+            return;
+        }
+
+        const docContent = fs.readFileSync(vscode.Uri.joinPath(this.instructionsDocsLocation, fileUri).fsPath);
         const fileSize = docContent.byteLength;
         this.memoryUsage += fileSize;
 
         const markdownString = new vscode.MarkdownString(docContent.toString());
         this.instructionDocs.set(instruction, markdownString);
 
-        vscode.window.showInformationMessage(`Loaded ${instruction} instruction doc for a total of ${this.memoryUsage} bytes`);
+        vscode.window.showInformationMessage(`loaded ${fileUri} for a total of ${this.memoryUsage} bytes`);
     }
 
     // public async loadInstructionsDocs() {

@@ -26,3 +26,10 @@ export const TreeViewCommandKeys = {
 	onItemClicked: 'gadgetExplorer.treeview.on_item_clicked',
 	refresh: 'gadgetExplorer.treeview.refresh'
 } as const;
+
+export const GadgetFileCommandKeys = {
+	createSnapshot: 'gadgetExplorer.gadgetfile.createSnapshot',
+	loadSnapshotPrev: 'gadgetExplorer.gadgetfile.loadSnapshotPrev',
+	loadSnapshotNext: 'gadgetExplorer.gadgetfile.loadSnapshotNext',
+	clearHighlighters: 'gadgetExplorer.gadgetfile.clearHighlighters'
+} as const;
